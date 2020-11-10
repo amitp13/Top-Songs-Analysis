@@ -1,0 +1,289 @@
+---
+title: "Song Recommended"
+output: md_document
+always_allow_html: true
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### Introduction
+
+This workbook deep dives into the spotify data and demonstrates a recommendation system based on a songs's audio properties. With the help of Spotify's API we can get a songs's energy, loudness, dancebility, amount of instrumentallness and valence. These properties possibly are related to each other and can be clustered to get similar songs. The aim of the project will be to use clustering algorithms to build a recommendation system. 
+
+
+#### 1. Data Preparation
+
+All of our data is extracted from the spotify API. A total of 45000 songs are present along with 14 variables. For the considertion of memory we will only be using a chunk of the data. In this section will import our dataset and import libraries that will be used in the analysis.
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(plyr)
+library(lubridate)
+library(factoextra)
+library(psych)
+library(NbClust)
+library(reshape2)
+library(wordcloud2)
+library(dbscan)
+library(fpc)
+library(clValid)
+spotify <- read.csv("C:\\Users\\phadk\\Desktop\\Work\\projects\\Top-Songs-Analysis\\songs.csv",header = TRUE)
+Data <- spotify
+Data[1:10,]
+
+```
+
+#### 2. Data Cleaning
+
+You can also embed plots, for example:
+
+```{r}
+dim(Data)  #getting rows and columns
+```
+```{r}
+summary(Data) #summary of entire data
+```
+```{r}
+colSums(is.na(Data)) #finding missing data
+```
+
+```{r}
+#Convert ms to secs 
+Data$duration_ms <- Data$duration_ms/1000
+colnames(Data)[3]<-"duration_s"
+```
+
+```{r}
+#scaling our audio properties data 
+Data[,c(6:14)] <- scale(Data[,c(6:14)])
+```
+
+
+#### 3. Exploratory Data Analysis
+
+There are few variables that will be interesting to look at in this dataset. First we will see which of the artist is most frequented in this dataset.
+
+```{r}
+artist_freq <- count(Data, 'artist')
+wordcloud2(data = artist_freq)
+```
+
+We see that Aretha Franklin has the most number of songs present in this dataset along with artists like Brad Paisley, The Bee Gees, Billy Joel etc.
+
+Next will see if the duration of the song can be useful for clustring our data.
+
+```{r}
+qplot(seq_along(Data$duration_s), Data$duration_s,  main = "Duration of Songs",
+      xlab = 'Seconds',
+      ylab = 'No. of songs',)
+```
+
+According to the plot most of our songs have similar duration and only a handful of have amuch larger duration. Taking duration in our clutering calculation will not prove fruitful in the long run. 
+
+```{r}
+mode_freq <- count(Data,'mode')
+mode_freq$mode[mode_freq$mode == 0] <- "Minor"
+mode_freq$mode[mode_freq$mode == 1] <- "Major"
+barplot(height=mode_freq$freq, names=mode_freq$mode, 
+        col=rgb(0.8,0.1,0.1,0.6),
+        xlab="mode", 
+        ylab="frequency", 
+        main="Modality of songs", 
+)
+
+```
+Mode explains if the song is in Major and Minor key. 0 denotes a Minor key while 1 is Major key. Mode is related to the valence of the song and hence we can exclude this variable from our clustering as well. 
+
+```{r}
+ap <- melt(Data[,c(6:14)])
+ggplot(ap,aes(x = value)) + 
+  facet_wrap(~variable,scales = "free_x") + 
+  geom_histogram() 
+```
+The following plot show the distribution of all the audio properties. Most of the varaibles are skewed except for tempo which is evenly distributed.Another good way to explore data and evaluate dimentionality is by doing a principal component analysis on the data.
+
+```{r}
+data.pca = Data[,c(6:14)]   #taking out only audio properties variables
+pca <- prcomp(data.pca, scale=TRUE, center=TRUE)
+summary(pca)
+```
+
+
+```{r}
+pca$rotation
+fviz_screeplot(pca, type='bar',main='Scree plot')
+```
+
+```{r}
+fviz_pca_biplot(pca,
+                col.var = "#2E9FDF", # Variables color
+                col.ind = "#696969"  # Individuals color
+                )
+```
+
+As per our EDA we see that most of the varaible are related to each other in terms of dimensionality. For example we can intuitively say that songs high in acousticness and instrumentalness will have a low energy and loudness reading. Songs with a lower tempo will be have low dancebility. Based on these factors we can cluster 
+our songs. 
+
+#### 4. Clustering
+
+From our EDA we got a better understanding of each variable.Tempo is normally distributed hence we will not use that for clutering. 
+
+Liveness measures the amount of presence of a live audience hence will is low for almost all the songs in our database. 
+
+Since spotify also host stand-ups and podcast these tracks have a high speechiness value. Thus Spechiness variable in our databse of songs is low or closer to 0 across all songs. 
+
+For clustering we will use our audio properties of acousticness, instrumentalness, valence, dancebility, loudness and energy. The algorithms we will test our clustering on are Kmeans algorithm and Hierarchical clustering algoritm.
+
+First task to random sample our data for memory mangement and then split it into training and testing sets respectively.
+
+```{r}
+data_sample <- Data[sample(nrow(Data),20553),]
+training_sample <- sample(c(TRUE, FALSE), nrow(data_sample), replace = T, prob = c(0.75,0.2))
+train <- data_sample[training_sample, ]
+test <- data_sample[!training_sample, ]
+```
+
+```{r}
+fviz_nbclust(train[,c(5,6,7,9,10,13)], kmeans, method="wss") + geom_vline(xintercept = 4, linetype=2)
+
+```
+First we will test the performance of our data based on K-means clustering. This is centroid based clustering algorithm. It will create a cluster based on centroid or central vector and map other vectors based on their distance with this central vector.
+
+
+To find the optimum k value we will use the silhouette method and elbow method. 
+
+```{r}
+fviz_nbclust(train[,c(5,6,7,9,10,13)], kmeans, method="silhouette")
+
+```
+According to silhouette method we see that optimal value of K is 2. While elbow method gives 4 as the optimal k value. Thus lets assume K as 2 and run our data through the Kmeans algorithm.
+
+```{r}
+set.seed(1234)
+clusters2 <- kmeans(train[,c(5,6,7,9,10,13)], 2)
+fviz_cluster(clusters2, data = train[,c(6:14)],
+             palette = c("#2E9FDF", "#00AFBB"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+```{r}
+clusters2$centers
+```
+Current cluster show us that one cluster is high in acousticness and instrumentalness while the remaining fall in the other cluster. Thus we can cluster our songs to acoustic-instrumental songs and energetic-dance songs. For an effective recommendation we need more clusters. We will test if our data is more suited for heirarchical clustering. 
+
+In heirarchical clustering distances of each data point are measured and relation between rows and/or columns is evaluated. First we will calculate the distances using euclidean distance formula.
+
+```{r}
+set.seed(123)
+distances <- dist(train[,c(5,6,7,9,10,13)],method="euclidean")
+hcluster <- hclust(distances, method="ward")
+```
+
+
+```{r}
+plot(hcluster)
+rect.hclust(hcluster , k = 5, border = 2:6)
+abline(h = 5, col = 'red')
+```
+```{r}
+cluster_groups_5 <- cutree(hcluster, k=5)
+
+print("Dancebility")
+tapply(train$danceability, cluster_groups_5,mean)
+
+print("Energy")
+tapply(train$energy, cluster_groups_5,mean)
+
+print("Loudness")
+tapply(train$loudness, cluster_groups_5,mean)
+
+print("Acoustiveness")
+tapply(train$acousticness, cluster_groups_5,mean)
+
+print("Instrumentalness")
+tapply(train$instrumentalness, cluster_groups_5,mean)
+
+print("Valence")
+tapply(train$valence, cluster_groups_5,mean)
+```
+Assuming k=4
+```{r}
+plot(hcluster)
+rect.hclust(hcluster , k = 4, border = 2:6)
+abline(h = 4, col = 'red')
+```
+
+
+```{r}
+cluster_groups_4 <- cutree(hcluster, k=4)
+
+print("Dancebility")
+tapply(train$danceability, cluster_groups_4,mean)
+
+print("Energy")
+tapply(train$energy, cluster_groups_4,mean)
+
+print("Loudness")
+tapply(train$loudness, cluster_groups_4,mean)
+
+print("Acoustiveness")
+tapply(train$acousticness, cluster_groups_4,mean)
+
+print("Instrumentalness")
+tapply(train$instrumentalness, cluster_groups_4,mean)
+
+print("Valence")
+tapply(train$valence, cluster_groups_4,mean)
+```
+
+Here we see that 4 clusters can be formed with properties having higher averages. While cluseter 5 can be used as for songs with miscelleaneous properties. WE can test our hypothesisis using the Elbow method. 
+
+With k as 4 or 5 we see 4 cluster seem the best options with 5 as misc category.
+
+Cluster 1 : happy sounding songs with high energy and highly danceability
+
+Cluster 2 : high energy songs with low dancebility, probably hard rock or rock songs
+
+Cluster 3 : acoustic songs with major chords and bit of groovy tone.
+
+Cluster 4 : highly acoustic and instrumental songs with very low mood or low valence. Probably classical or slow rnB  
+
+Cluster 5 : songs of the misc category.
+
+Evaluate the sizes of ach cluster if k=5
+```{r}
+table(cluster_groups_5)
+```
+Evaluate the sizes of ach cluster if k=5
+```{r}
+table(cluster_groups_4)
+```
+
+When K=5 we see an even distribution across all clusters except cluster 4. This cluster consists of songs with high energy and low dancebility which is very rare. When K=4 cluster 2 and 3 remain the same while clusters 4 and 1 increase by about 50%. With average analysis, size of clusters and our optimal cluster analysis we will select k as 4. 
+
+#### 5. Recommending 25 songs based on a single song.
+
+```{r}
+clusters <- data.frame(hcluster$order)
+
+#getting a dataframe with clusters and tracks
+train_w_clusters = cbind(train, cluster_groups_4)
+train_w_clusters[1:10,]
+```
+My most recent favorite song is Finding songs similar Ain't No Rest For The Wicked by Cage the elephant's. So I want to listen songs similar to that 
+
+```{r}
+x <- subset(train_w_clusters,track=="Ain't No Rest For The Wicked" & artist=="Cage The Elephant")
+all_songs <- subset(train_w_clusters, cluster_groups_4==x$cluster_groups_4)  #all cluster songs
+
+#Top 10 songs of that input songs cluster
+all_songs[1:10,c(1,2)]
+```
+
