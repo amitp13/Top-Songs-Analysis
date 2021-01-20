@@ -19,7 +19,7 @@
 
 > Scale of the dataset:   6077 observation, and 19 variables.
 
-||  Column Name      | Data Type   | Description                                             
+|  Column Name      | Data Type   | Description                                             
 | ----------------- | -------------| -------------------------------------------------------
 |  billboard_year   | numeric      | Year for the billboard list.    
 | song_id           | alphanumeric | Song id as per Spotify.                
