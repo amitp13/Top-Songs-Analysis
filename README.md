@@ -1,45 +1,42 @@
-# Top-Songs-Analysis
+# Analyzing Billboards year-end top 100 Songs
 
 ## Problem Statement
 
-> Every songs has its personality, For example Fire and Rain by James Taylor is a nice acoustic song for easy listening, while nirvana's smells like teen spirit is full of energy and teenage angst. Then we have songs to dance to like, shape of you by Ed Sheeran.
- <br>
+> Every year Billboard realeases a list of 100 songs that dominated the music industry with stream count, sales and popularity among critics, and fans. As a musician myself I always ask my myself if music is supposed to be subjective, how can the masses like a few particular songs. 
 
-> A few questions arise, <br>
 **Is there common factor that make these songs a hit? and if so What are these factors? <br>
   How do our preferences change as time goes by? <br>
   Can we analyze the data to understand why songs go to the top of the charts?** <br>
 
-> Answering these questions might help our target audiences namely music artists and record labels. In this project we will try to answer the question can we group our songs based on it audio properties.
+> Answering these questions might help our target audiences namely music artists and record labels. In this project we will try to answer the question can we group our songs based on it audio properties.      
 
 
 ## Data Dictionary(About the Dataset)
 
-> The dataset we will be using for the project is sourced from Kaggle. It consits of the top tracks of every year since in 2010 from Billboard.com
+> The dataset is collected from Spotify's API by building a wrapper in Python and extracting relavant information.
 
-> The songs have some basic attributes such as Name, Artist Name, Release Year and Genre. Some important attributes that follow are a few music properties curated by Spotify. The properties include Dancebility, Valence, Energy, Beats Per Minute etc.
+> By the end of the collection process, we have a dataset of top 100 songs from 1960 to 2020
 
-> In Summary, the Dataset conatains 15 columns which include the song metadata and its audio properties. A total of 604 songs have been collected since the year 2011 which are a part of the top tracks list of Billboard.com. A detailed description of the feilds is given below.
+> Scale of the dataset:   6077 observation, and 19 variables.
 
-|  Column Name      | Data Type | Description                                             
-| ----------------- | --------- | -------------------------------------------------------
-| title             | numeric   | Name of the Song	                                     
-| artist	          | character | Artist                                                
-| acousiveness      |	numeric   | Acousticness - A confidence measure from 0.0 to 1.0 of whether the track is acoustic.
-| dancebility	      | numeric   | Danceability- Describes how suitable a track is for<br>dancing based on a combination of musical elements.
-| duration	        | numeric   | Duration - The duration of the track in milliseconds.
-| energy            | numeric   | Energy - A measure from 0.0 to 1.0 and represents<br> a perceptual measure of intensity and activity.
-| instrumentalness  | numeric   | How much instrumentatility is present in the song.
-| liveness	        | numeric   | Liveness - Detects the presence of an audience in the recording.
-| loudness	        | numeric   | Loudness - The overall loudness of a track in decibels (dB).
-| speechiness       |	numeric   | Speechiness - Speechiness detects the presence of spoken words in a track.
-| tempo             | numeric   | tempo of a song
-| valence	          | numeric   | Valence - A measure from 0.0 to 1.0 describing the musical positiveness
-| pop               | numeric   | Popularity- The higher the value the more popular the song is.
-| key               | numeric   | key of the song
-| mode              | binary    | mood of a song. 0 or 1 values.
-
-### Contributors :
-**Apurva Sarode<br>
-Renuka Madhugiri<br>
-Amit Phadke<br>**
+||  Column Name      | Data Type   | Description                                             
+| ----------------- | -------------| -------------------------------------------------------
+|  billboard_year   | numeric      | Year for the billboard list.    
+| song_id           | alphanumeric | Song id as per Spotify.                
+| name              | character    | Name of the song
+| artist	           | character    | Artist of the song
+| release_date	     | datetime     | Release date of the single 
+| popularity        | numeric      | A measure of the stream count and downloads for the song on Spotify.
+| danceability 	    | numeric      | A measure of danceable is the song.
+| energy	           | numeric      | Overall energy of the song.
+| key	              | numeric      | Key the song is. key of C is denoted by 0, C# by 1, D by 2 and so on.
+| loudness	         | numeric      | The dBs the song is recorded at.
+| mode	             | numeric      | measure if song is in Major or Minor scale. 0 is minor and 1 is major. 
+| speechiness	      | numeric      | amount of specch pattern present in the song.
+| acousticness	     | numeric      | amount of acoustic sound presence in the song.
+| instrumentalness	 | numeric      | measure of instruments in the song as opposed to vocals.
+| liveness	         | numeric      | Presence of live audience in the track.
+| valence	          | numeric      | Value to measure mood of the song. Higher the valence, happier the song mood.
+| tempo	            | numeric      | Beats per minute measure for the song.
+| duration_ms	      | numeric      | Duration of the track in miliseconds
+| time_signature    | numeric      | The time signature of the track. eg 1/4, 3/4 or 4/4 and so on.
